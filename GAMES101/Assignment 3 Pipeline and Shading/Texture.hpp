@@ -24,14 +24,40 @@ public:
 
     Eigen::Vector3f getColor(float u, float v)
     {
-        if (u > 1 || u < 0 || v>1 || v < 0) return Eigen::Vector3f(0, 0, 0);
-
+        // 弃用原来的，用双线性插值
+        return getBilinear(u, v);
         u = std::clamp<float>(u, 0, 1);
         v = std::clamp<float>(v, 0, 1);
 
         auto u_img = u * width;
         auto v_img = (1 - v) * height;
         auto color = image_data.at<cv::Vec3b>(v_img, u_img);
+        return Eigen::Vector3f(color[0], color[1], color[2]);
+    }
+
+    Eigen::Vector3f getBilinear(float u, float v) {
+        u = std::clamp<float>(u, 0, 1);
+        v = std::clamp<float>(v, 0, 1);
+        float u_img = u * width;
+        float v_img = (1 - v) * height;
+
+        int a = std::floor(u_img);
+        int b = std::floor(v_img);
+        int c = a + 1 < width ? a + 1 : width;
+        int d = b + 1 < height ? b + 1 : height;
+
+        auto c0 = image_data.at<cv::Vec3b>(v_img, u_img);
+        auto c1 = image_data.at<cv::Vec3b>(b, c);
+        auto c2 = image_data.at<cv::Vec3b>(d, a);
+        auto c3 = image_data.at<cv::Vec3b>(d, c);
+
+        float p1 = v_img - (float)b;
+        float p2 = u_img - (float)a;
+        auto temp1 = p1 * c0 + (1 - p1) * c2;
+        auto temp2 = p1 * c1 + (1 - p1) * c3;
+        auto color = p2 * temp1 + (1 - p2) * temp2;
+        
+        //return Eigen::Vector3f(c0[0], c0[1], c0[2]);
         return Eigen::Vector3f(color[0], color[1], color[2]);
     }
 
